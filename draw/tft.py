@@ -8,18 +8,18 @@ import ConfigParser
 
 
 class Tft:
-    TFTW = 320
-    TFTH = 240
-
     # Initialize C-Berry controller, use the same procedure, as in C example sources
     def __init__(self):
+        config = ConfigParser.RawConfigParser()
+        config.read('motion.properties')
+
         cberry.bcm2835_init()
         cberry.TFT_init_board()
         cberry.TFT_hard_reset()
         cberry.RAIO_init()
         cberry.RAIO_clear_screen()
-        config = ConfigParser.RawConfigParser()
-        config.read('motion.properties')
+        cberry.RAIO_SetBacklightPWMValue(config.getint("Tft", "backlight"))
+
         self.timeout = config.getint("Tft", "screensaver")
         self.on = True
         self.drawqueue = Queue.Queue()
@@ -30,8 +30,6 @@ class Tft:
         while True:
             try:
                 picture = self.drawqueue.get(timeout=self.timeout)
-                # The picture needs to be resize for the TFT display first
-                picture = cv2.resize(picture, (self.TFTW, self.TFTH))
                 bmp = cv2.cvtColor(picture, cv2.COLOR_BGR2BGR565, dstCn=1)
                 if not self.on:
                     self.stop_screensaver()

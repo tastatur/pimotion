@@ -1,8 +1,7 @@
 import Queue
 import cv2
-import time
-import ConfigParser
-import draw.tft
+import savedata
+import threading
 
 
 class SimpleDiffAnalyze:
@@ -14,10 +13,9 @@ class SimpleDiffAnalyze:
 
     def __init__(self):
         self.frames = Queue.Queue()
-        config = ConfigParser.RawConfigParser()
-        config.read('motion.properties')
-        self.motionsdir = config.get("SimpleDiff", "motionsdir")
-        self.tft = draw.tft.Tft()
+        self.datasave = savedata.Savedata()
+        self.saveworker = threading.Thread(target=self.datasave.save)
+        self.saveworker.start()
 
     def prepare_image(self, image):
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -42,9 +40,7 @@ class SimpleDiffAnalyze:
 
             binary_result = self.calculate_threshold()
             (mean, stddev) = cv2.meanStdDev(binary_result)
-            print "Mean: {0}, Std dev:{1}".format(mean[0][0], stddev[0][0])
+            print "Mean: {0}, Std dev:{1}, {2}. {3}".format(mean[0][0], stddev[0][0], self.current_frame.shape[:2], self.datasave.images.qsize())
             if mean[0][0] > self.MIN_MEAN and stddev[0][0] < self.MAX_STDDEV:
+                self.datasave.images.put_nowait((binary_result, self.current_frame))
                 print "Motion detected"
-                cv2.imwrite("{0}/{1}.png".format(self.motionsdir, time.time()), binary_result)
-                self.tft.drawqueue.put_nowait(self.current_frame)
-                print "DEBUG: TFT queue size: {0}".format(self.tft.drawqueue.qsize())

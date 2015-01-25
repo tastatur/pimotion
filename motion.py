@@ -3,6 +3,7 @@ import picamera.array
 import threading
 import analyze.simplediff
 import ConfigParser
+import draw.recordvideo
 
 analyzer = analyze.simplediff.SimpleDiffAnalyze()
 worker = threading.Thread(target=analyzer.process)
@@ -22,6 +23,9 @@ with picamera.PiCamera() as camera:
 
     camera.resolution = (camera_width, camera_height)
     camera.framerate = camera_fps
+    recorder = draw.recordvideo.Recordvideo(camera)
+    recorder_worker = threading.Thread(target=recorder.draw)
+    recorder_worker.start()
     with picamera.array.PiRGBArray(camera, size=scale) as image:
         for frame in camera.capture_continuous(image, format('bgr'), use_video_port=use_videoport, resize=scale):
             analyzer.frames.put_nowait(image.array)
